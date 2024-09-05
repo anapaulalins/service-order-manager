@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, Image } from 'react-native';
 import useProductStore from 'store/useProductStore';
 
 import { RootStackParamList } from '../navigation';
@@ -15,7 +15,14 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Ordens de Serviço</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Ordens de Serviço</Text>
+        <Image
+          source={require('../images/logo.png')}
+          style={{ height: 55, width: 55, borderRadius: 12 }}
+          resizeMode="contain"
+        />
+      </View>
       <View style={styles.buttonsContainer}>
         <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('CreateOrder')}>
           <Ionicons name="add-circle" size={32} color="black" style={{ marginRight: 2 }} />
@@ -52,6 +59,11 @@ export const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,

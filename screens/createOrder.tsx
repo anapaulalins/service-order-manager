@@ -1,10 +1,23 @@
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { BackButton } from 'components/BackButton';
+import { CameraView, useCameraPermissions, CameraCapturedPicture } from 'expo-camera';
+import { manipulateAsync, FlipType } from 'expo-image-manipulator';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
-import React, { useReducer } from 'react';
-import { StyleSheet, View, Text, TextInput, Button, Switch, ScrollView, Alert } from 'react-native';
+import React, { useEffect, useReducer, useRef, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  Button,
+  Switch,
+  ScrollView,
+  Alert,
+  Modal,
+  Image,
+} from 'react-native';
 import uuid from 'react-native-uuid';
 import useProductStore from 'store/useProductStore';
 
@@ -78,6 +91,24 @@ export function CreateOrder() {
   const addProduct = useProductStore((state) => state.addProduct);
   const navigation = useNavigation<CreateOrderScreenRouteProp>();
 
+  const [capturedPhoto, setCapturedPhoto] = useState<CameraCapturedPicture | undefined>();
+
+  const [permission, requestPermission] = useCameraPermissions();
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const camera = useRef<CameraView>(null);
+
+  useEffect(() => {
+    (async () => {
+      if (permission?.status !== 'granted') {
+        const permission = await requestPermission();
+        if (permission.status !== 'granted') {
+          Alert.alert('Erro', 'Permissão da camera negada');
+        }
+      }
+    })();
+  }, []);
+
   const handleCreateOrder = () => {
     const {
       clientName,
@@ -109,6 +140,23 @@ export function CreateOrder() {
     navigation.navigate('Home');
   };
 
+  const takePicture = async () => {
+    if (camera.current) {
+      const picture = await camera.current?.takePictureAsync();
+
+      if (picture?.uri) {
+        const flippedPicture = await manipulateAsync(picture.uri, [{ flip: FlipType.Horizontal }], {
+          compress: 1,
+          base64: true,
+        });
+
+        setCapturedPhoto(flippedPicture);
+      }
+
+      setModalVisible(false);
+    }
+  };
+
   const generatePDF = async () => {
     const {
       clientName,
@@ -123,6 +171,10 @@ export function CreateOrder() {
       status,
     } = state;
 
+    const photoBase64 = capturedPhoto
+      ? `<img src="data:image/jpeg;base64,${capturedPhoto.base64}" style="width: 200px; height: 200px;" />`
+      : '';
+
     const html = `
      <html>
      <body>
@@ -136,6 +188,8 @@ export function CreateOrder() {
       <p><strong>Descrição do Defeito:</strong> ${defectDescription}</p>
       <p><strong>Valor do Orçamento:</strong> ${budget}</p>
       <p><strong>Status:</strong> ${status}</p>
+       <p><strong>Foto Capturada:</strong></p>
+      ${photoBase64}
      </body>
      </html>
     `;
@@ -211,6 +265,23 @@ export function CreateOrder() {
         onChangeText={(text) => dispatch({ type: 'SET_BUDGET', payload: text })}
         keyboardType="numeric"
       />
+
+      {capturedPhoto && (
+        <>
+          <Text style={{ fontWeight: 'bold', fontSize: 18 }}>Foto do Equipamento</Text>
+          <Image source={{ uri: capturedPhoto.uri }} style={{ width: 100, height: 100 }} />
+        </>
+      )}
+
+      <Button title="Foto do equipamento" onPress={() => setModalVisible(true)} color="#f0ab0a" />
+
+      <Modal visible={modalVisible} animationType="slide">
+        <CameraView style={{ flex: 1 }} facing="back" ref={camera} />
+
+        <Button title="Tirar foto" onPress={takePicture} />
+
+        <Button title="Cancelar" onPress={() => setModalVisible(false)} />
+      </Modal>
 
       <Button title="Criar ordem de serviço" onPress={handleCreateOrder} color="#00cc66" />
       <Button title="Gerar PDF" onPress={generatePDF} color="#007bff" />
